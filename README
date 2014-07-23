@@ -27,9 +27,13 @@ Files contained in this repository :
 
    directory : doc - contains the following ...
 
-      file : compile.txt - instructions to compile the program
+      file : about.txt - my attempt to explain what JNOS really is.
 
-      file : changes.txt - release history
+      file : copyright.txt - the so called LICENSE file, self explanatory.
+
+      file : compile.txt - instructions to compile the program.
+
+      file : changes.txt - release history.
 
 This will be of course added to as time permits, but it's a start.
 
