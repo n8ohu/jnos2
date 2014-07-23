@@ -1,8 +1,24 @@
 
-July 23, 2014 - Compile instructions for JNOS 2.0j.6r (github source)
+July 23, 2014 - Compile instructions for JNOS 2.0j.6r
 
-1) There is NO incremental update from previous versions, too much
-   has changed, and a mass compile is required anyways.
+1) Prerequisites
+
+  This software uses ncurses, so you will need to install ncurses libraries
+  and the ncurses development (header files) in order to properly compile :
+
+  On rhel based systems, run :
+
+     sudo yum install ncurses-devel
+
+  On ubuntu based systems, try one of the following (may vary) :
+
+     sudo apt-get install libncurses5-dev
+
+     sudo apt-get install ncurses-devel
+
+  On other systems, just google how to install ncurses development.
+
+2) Extracting the files
 
    Save the 'jnos2.0j.6r.tar.gz' file to any directory you like, then :
 
@@ -10,7 +26,7 @@ July 23, 2014 - Compile instructions for JNOS 2.0j.6r (github source)
      tar xvf jnos2.0j.6r.tar
      cd src
 
-2) Before you compile and IF you have your own config.h from a previous
+3) Before you compile and IF you have your own config.h from a previous
    version of JNOS 2.0, then you can copy it over if you like. However, if
    you choose to do this, do a 'diff' between your 'config.h' and the new
    'config.h.default' shipped with JNOS 2.0j.6r - to see what new features
@@ -25,14 +41,14 @@ July 23, 2014 - Compile instructions for JNOS 2.0j.6r (github source)
    the 'make defconfig' command first. That will create the 'config.h' for
    you, then you can edit it to suit your own preferences.
 
-3) To compile and link JNOS, just enter the 'make' command.
+4) To compile and link JNOS, just enter the 'make' command.
 
    Please note that warnings may happen, although with this release I have
    made extra effort to try and clean them ALL up, your mileage will vary.
 
-4) That's it, if all goes well, you should have a new 'jnos' binary.
+5) That's it, if all goes well, you should have a new 'jnos' binary.
 
-5) Why is 'jnos' binary so large AND what to do about JNOS crashing !
+6) Why is 'jnos' binary so large AND what to do about JNOS crashing !
 
    Note that my makefile has debugging turned on, so any 'jnos' binary
    you compile will be large (because it contains debuggin info). If you
