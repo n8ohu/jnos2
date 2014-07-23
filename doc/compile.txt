@@ -1,0 +1,74 @@
+
+July 23, 2014 - Compile instructions for JNOS 2.0j.6r (github source)
+
+1) There is NO incremental update from previous versions, too much
+   has changed, and a mass compile is required anyways.
+
+   Save the 'jnos2.0j.6r.tar.gz' file to any directory you like, then :
+
+     gunzip jnos2.0j.6r.tar.gz
+     tar xvf jnos2.0j.6r.tar
+     cd src
+
+2) Before you compile and IF you have your own config.h from a previous
+   version of JNOS 2.0, then you can copy it over if you like. However, if
+   you choose to do this, do a 'diff' between your 'config.h' and the new
+   'config.h.default' shipped with JNOS 2.0j.6r - to see what new features
+   you might be missing out on. It is probably not a big deal, but you
+   should know about it anyways.
+
+   IF you are starting from scratch, the compile process automatically
+   copies the 'config.h.default' to 'config.h' (only if the latter is not
+   present) and then compiles the whole thing.
+
+   IF you want to edit a new config.h BEFORE the compile starts, then use
+   the 'make defconfig' command first. That will create the 'config.h' for
+   you, then you can edit it to suit your own preferences.
+
+3) To compile and link JNOS, just enter the 'make' command.
+
+   Please note that warnings may happen, although with this release I have
+   made extra effort to try and clean them ALL up, your mileage will vary.
+
+4) That's it, if all goes well, you should have a new 'jnos' binary.
+
+5) Why is 'jnos' binary so large AND what to do about JNOS crashing !
+
+   Note that my makefile has debugging turned on, so any 'jnos' binary
+   you compile will be large (because it contains debuggin info). If you
+   are not at all interested in debugging, then you can reduce the size
+   of the 'jnos' binary using the following command :
+
+    strip jnos
+
+   which will strip out the debugging information and symbol table.
+
+   If you ARE interested in helping me fix bugs, then I encourage you to
+   run the GDB debugger that comes with most linux distros, AND make sure
+   you do NOT strip the 'jnos' binary, since it contains important info for
+   the debugger to use when a crash occurs.
+
+   Using GDB is easy. With JNOS running already, find out it's pid, using
+   the linux command, 'ps -ef | grep jnos'. Once you know what the pid is,
+   then run the gdb debugger something like this :
+
+    gdb -p pid
+
+   GDB will load, JNOS will hang temporarily, and GDB will suddenly give
+   you a prompt. Enter the command, 'continue', at the prompt, and JNOS
+   will continue to run again.
+
+   When a crash occurs, GDB will break out to the prompt again, and JNOS
+   will hang. Take a screen shot of what GDB printed out, then type in
+   the command, 'back full', at the GDB prompt, and note the info that
+   appears. Please send all of that information to me, with a brief
+   explanation of what might have been going on at the time.
+
+   If you have JNOS logging in effect, please send me the log file at
+   the time of the crash if you don't mind. Logs are under /jnos/logs/
+   directory (by default).
+
+JNOS 2.0j.6r released - 22Jul2014
+
+* Maiko Langelaar / VE4KLM
+
