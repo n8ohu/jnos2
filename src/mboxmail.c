@@ -1,7 +1,7 @@
 /*
  * JNOS 2.0
  *
- * $Id: mboxmail.c,v 1.7 2013/09/15 14:57:06 ve4klm Exp ve4klm $
+ * $Id: mboxmail.c,v 1.8 2014/10/12 20:33:25 ve4klm Exp ve4klm $
  *
  * These are the MAILCMDS
  *
@@ -622,6 +622,8 @@ char *extra;        /* optional extra header lines */
 
 	char *tfile_to_hdr, *newmto; /* 29Dec2013, dealing with Hdrs[TO] field */
 
+	char *new1cc;	/* 25Jul2014, rewriting of CCLIST local addresses if necessary */
+
 #ifdef DEBUG_MBX_HDRS
 	mbx_dump ("mbx_data", m);
 #endif
@@ -771,27 +773,43 @@ char *extra;        /* optional extra header lines */
 	 * at the BBS user prompt, and it works just fine. Forwarding still
 	 * looks like it works properly, it definitely should, since CCLIST
 	 * are not used in any forwarding between systems (except FC stuff).
+	 *
+	 * 25Jul2014, Maiko, Silly me, if exthosts exist, I need to check 
+	 * both To: AND the CCLIST for any LOCAL addresses, not just the
+	 * the To: field, so loop the cclist twice, first time to determine
+	 * if any external hosts are present, then second time to locate any
+	 * localhosts in the CCLIST and process them like I do To: field !
 	 */
 
     if (cclist != NULLLIST)
 	{
-		if (strchr (tfile_to_hdr, '@') == NULLCHAR)
+		int	exthosts = 0;
+
+		/* any external hosts in the 'Cc:' list ? */
+		for (ap = cclist; ap != NULLLIST; ap = ap->next)
 		{
-			int exthosts = 0;
+			log (-1, "CCLIST [%s]", ap->val);
 
-    		for(ap = cclist; ap != NULLLIST; ap = ap->next)
+			if (strchr (ap->val, '@') != NULLCHAR)
 			{
-#ifdef DEBUG_MBX_HDRS
-				log (-1, "CCLIST [%s]", ap->val);
-#endif
-				if (strchr (ap->val, '@') != NULLCHAR)
-				{
-					exthosts++;
-					break;
-				}
+				exthosts++;
+				/* break; 10Aug2014, We can break, we just need
+					to see if there are external hosts, but by
+					not breaking, the external count is accurate :)
+				*/
 			}
+		}
 
-			if (exthosts)
+		/* any external host in the 'To:' field ? */
+		if (strchr (tfile_to_hdr, '@') != NULLCHAR)
+			exthosts++;
+
+		if (exthosts)
+		{
+			log (-1, "CCLIST %d externals, to [%s]", exthosts, tfile_to_hdr);
+
+			/* check if the To: field is a local address or not */
+			if (strchr (tfile_to_hdr, '@') == NULLCHAR)
 			{
 				/*
 				 * 15Jul2013, Maiko, this can cause a crash in most unexpected
@@ -801,10 +819,9 @@ char *extra;        /* optional extra header lines */
 				newmto = malloc (strlen (tfile_to_hdr) + strlen (Hostname) + 2);
 
 				sprintf (newmto, "%s@%s", tfile_to_hdr, Hostname);
-#ifdef DEBUG_MBX_HDRS
-				log (-1, "CCLIST tfile orig [%s] new [%s]",
-					tfile_to_hdr, newmto);
-#endif
+
+				log (-1, "CCLIST orig to [%s] new to [%s]", tfile_to_hdr, newmto);
+
 				if (MbrewriteToHdr)
 				{
 					free (m->to);
@@ -819,6 +836,24 @@ char *extra;        /* optional extra header lines */
 				{
 					free (m->to);
 					tfile_to_hdr = m->to = newmto;
+				}
+			}
+
+			/* check if any of the cclist is a local addresses or not */
+			for (ap = cclist; ap != NULLLIST; ap = ap->next)
+			{
+				log (-1, "CCLIST cc [%s]", ap->val);
+
+				if (strchr (ap->val, '@') == NULLCHAR)
+				{
+					new1cc = malloc (strlen (ap->val) + strlen (Hostname) + 2);
+
+					sprintf (new1cc, "%s@%s", ap->val, Hostname);
+
+					log (-1, "CCLIST orig cc [%s] new cc [%s]", ap->val, new1cc);
+
+					free (ap->val);
+					ap->val = new1cc;
 				}
 			}
 		}
@@ -1368,28 +1403,48 @@ void *p;
         tputc('\n');
   
     /* If the the command was 'SC' then read the Cc: list now - WG7J */
-    if((m->stype == 'C') && !(m->sid & MBX_SID)) {
+    if((m->stype == 'C') && !(m->sid & MBX_SID))
+	{
+		char *unlimited_cc_line;
+
         m->stype = 'P'; /* make everything private */
         j2tputs(CcLine);
-        if(mbxrecvline(m) != -1) {
-            if(strlen(m->line)) {
-                if(*m->line == 0x01) { /* CTRL-A, abort */
+	/*
+	 * 14Oct2014, Brand new function that allows us to read an unlimited size
+	 * string without the need for a fixed length input buffer, it simply gives
+	 * us a string to play with. This CC part is now independent of m->line !!
+ 	 */
+		if ((unlimited_cc_line = ufgets (m->user)) != NULL)
+		{
+            if (strlen (unlimited_cc_line))
+			{
+                if (*unlimited_cc_line == 0x01)	/* CTRL-A, abort */
+				{
+					free(unlimited_cc_line);
                     free(rhdr);
                     del_list(cclist);
                     j2tputs(MsgAborted);
                     return 0;
                 }
-                cp = m->line;
+
+                cp = unlimited_cc_line;
+
         /* get all the Cc addresses, separated by commas, tabs or blanks */
-                while((cp2=strpbrk(cp,", \t")) != NULLCHAR) { /* Allow , and whitespace separators */
+                while((cp2=strpbrk(cp,", \t")) != NULLCHAR)
+				{
+					 /* Allow , and whitespace separators */
                     *cp2 = '\0';
+
             /*get rid of leading spaces or tabs*/
                     while(*cp == ' ' || *cp == '\t')
                         cp++;
+
                     if(strlen(cp))
                         addlist(&cclist,cp,0,NULLCHAR);
+
                     cp = cp2 + 1;
                 }
+
         /* Do the last or only one */
         /* get rid of leading spaces or tabs*/
                 while(*cp == ' ' || *cp == '\t')
@@ -1397,7 +1452,11 @@ void *p;
                 if(strlen(cp))
                     addlist(&cclist,cp,0,NULLCHAR);
             }
-        } else {
+
+			free(unlimited_cc_line);
+        }
+		else
+		{
             free(rhdr);
             del_list(cclist);
             return 0;

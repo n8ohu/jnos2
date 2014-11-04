@@ -89,6 +89,27 @@ char *authpass));
 static void rip_trace(short level, char *errstr, ...);
 static int32 extractnet(int32 addr);
 
+#ifdef RIPAMPRGW
+
+/*
+ * 27Oct2014, Maiko (VE4KLM), Before now, the RIPAMPRGW and Regular rip were
+ * mutually exclusive - you could only use one or the other, not both at the
+ * same time. Chances are, one will never use both at the same time, but from
+ * a technical point of view, the RIPAMPRGW should not keep the Regular rip
+ * from being available or functioning properly, so that is now fixed.
+ *
+ * rip_amprgw = 738197505 - value returned by resolve ("44.0.0.1")
+ *
+ */
+
+static int32 rip_amprgw = 738197505;
+
+#else
+
+static int32 rip_amprgw = -1;
+
+#endif
+
 /* Send RIP CMD_RESPONSE packet(s) to the specified rip_list entry */
 
 void
@@ -542,12 +563,9 @@ rip_init()
 {
     struct socket lsock;
     int x;
- 
-#ifdef RIPAMPRGW
-    lsock.address = Encap.addr;
-#else 
+
     lsock.address = INADDR_ANY;
-#endif
+
     lsock.port = RIP_PORT;
   
     if(Rip_cb == NULLUDP)
@@ -880,6 +898,8 @@ unsigned char version;
     int drop = 0;
     int trigger = 0;
 
+	int32 rip_source = gateway;	/* NEW - 27Oct2014, Maiko (VE4KLM) */
+
     if(ep->rip_family != RIP_AF_INET) {
         if (ep->rip_family == RIP_AF_AUTH)
             return;
@@ -957,28 +977,34 @@ unsigned char version;
    /* Find existing entry, if any */
     rp = rt_blookup(target,bits);
  
-#ifdef	RIPAMPRGW 
-   /*
-	* 04Mar2010, Maiko, Encap.txt was all private routes, which is probably
-    * what we want anyways, since the BBS 'ip' command could result in alot
-    * of information coming out, and over slow links that would not be good,
-	* so instead just make sure we update ENCAP interface routes only.
-    */
-    if(rp != NULLROUTE && rp->iface != iface)
+	/* 27Oct2014, Maiko (VE4KLM), Replaces the hard coded RIPAMPRGW */
+	if (rip_source == rip_amprgw)
 	{
-        rip_trace(3, "Route %s/%u unchanged, not encap",
-			inet_ntoa (target), bits);
+	   /*
+		* 04Mar2010, Maiko, Encap.txt was all private routes, which is probably
+	    * what we want anyways, since the BBS 'ip' command could result in alot
+	    * of information coming out, and over slow links that would not be good,
+		* so instead just make sure we update ENCAP interface routes only.
+	    */
+	    if(rp != NULLROUTE && rp->iface != iface)
+		{
+	        rip_trace(3, "Route %s/%u unchanged, not encap",
+				inet_ntoa (target), bits);
 
-        return;
+	        return;
+		}
 	}
-#else
-   /* Don't touch private routes */
-    if(rp != NULLROUTE && (rp->flags & RTPRIVATE)) {
-        rip_trace(3, "Route to [%s]/%u unchanged, private", inet_ntoa(target),
-        bits);
-        return;
-    }
-#endif
+	else
+	{
+		/* Don't touch private routes */
+		if(rp != NULLROUTE && (rp->flags & RTPRIVATE))
+		{
+        	rip_trace(3, "Route to [%s]/%u unchanged, private",
+				inet_ntoa(target), bits);
+
+        	return;
+    	}
+	}
 
     if(rp == NULLROUTE) {
         if(ep->rip_metric < RIP_METRIC_UNREACHABLE) {
@@ -1024,7 +1050,9 @@ unsigned char version;
         }
 		else
 		{
-#ifdef	RIPAMPRGW
+			/* 27Oct2014, Maiko (VE4KLM), Replaces the hard coded RIPAMPRGW */
+			if (rip_source == rip_amprgw)
+			{
 		/*
 		 * 27Feb2010, Maiko, The metric is always 2 with the AMPRgw updates,
 		 * so just change the darn gateway, the original code doesn't consider
@@ -1035,16 +1063,18 @@ unsigned char version;
 		 * of course the metric will never change. So RIP may not be quite
 		 * what we want to use here, but it can still work, let's see ...
 		 */
-			rip_trace(3, "gateway change %s/%u Metrics new: %d old: %d",
+				rip_trace(3, "gateway change %s/%u Metrics new: %d old: %d",
+						inet_ntoa(target), bits, ep->rip_metric, rp->metric);
+				drop++;
+				add++;
+				trigger++;
+			}
+			else
+			{
+		        /* Metric is no better, stay with current route */
+            	rip_trace(3, "Metric not better [%s]/%u new: %d old: %d",
 					inet_ntoa(target), bits, ep->rip_metric, rp->metric);
-			drop++;
-			add++;
-			trigger++;
-#else
-         /* Metric is no better, stay with current route */
-            rip_trace(3, "Metric not better [%s]/%u new: %d old: %d",
-				inet_ntoa(target), bits, ep->rip_metric, rp->metric);
-#endif
+			}
         }
     }
     if(drop) {
@@ -1077,10 +1107,13 @@ unsigned char version;
 		  return;
 		}
 
-#ifdef	RIPAMPRGW 
-	   /* 04Mar2010, Maiko, Make sure we add the route as a private route */
-		rp->flags |= RTPRIVATE;
-#endif
+		/* 27Oct2014, Maiko (VE4KLM), Replaces the hard coded RIPAMPRGW */
+		if (rip_source == rip_amprgw)
+		{
+		   /* 04Mar2010, Maiko, Make sure we add the route as a private route */
+			rp->flags |= RTPRIVATE;
+		}
+
       /* Add in the routing tag for RIP-2 */
   
         if (version >= RIP_VERSION_2)

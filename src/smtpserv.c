@@ -1,7 +1,7 @@
 /*
  * JNOS 2.0
  *
- * $Id: smtpserv.c,v 1.7 2012/04/30 01:34:27 ve4klm Exp ve4klm $
+ * $Id: smtpserv.c,v 1.8 2014/10/12 20:31:36 ve4klm Exp $
  *
  * SMTP Server state machine - see RFC 821
  *  enhanced 4/88 Dave Trulli nn2z
@@ -1222,16 +1222,28 @@ int requeue_OK;   /* TRUE when client host is another system */
                                  * address in the index.  But ap->val is an area, so see if we kept
                                  * the original value before rewrite().
                                  */
+
+
+#ifdef	WHY_ARE_WE_DOING_THIS
                                 if (ap->aux) { /* n5knx: original destination preferred here */
+
+
                                     free(ind.to);
                                     ind.to = j2strdup(ap->aux);
+									log (-1, "smtpserv TO set to aux [%s]", ap->aux);
                                     /* we ought to fudge To: and Cc: lines in case sysop re-indexes
                                        but for now let's ignore that little problem */
                                 }
+#endif
+								log (-1, "smtpserv TO [%s]", ind.to);
+#ifdef MOVE_THIS_INTO_SETINDEX
                                 if ((cp=strchr(ind.to,'@')) != NULLCHAR && !stricmp(cp+1,Hostname)) {
                                     *cp='\0'; /* but strip @our_hostname */
+									log (-1, "smtpserv strip TO [%s]", ind.to);
                                     if ((cp = strrchr(ind.to,'%')) != NULLCHAR) *cp = '@';
+									log (-1, "smtpserv add @ ? [%s]", ind.to);
                                 }
+#endif
                                 /* fall into CC: case */
                             case CC:
                                 ++tocnt;

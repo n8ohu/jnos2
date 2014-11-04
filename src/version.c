@@ -35,7 +35,7 @@
 #include "ax25.h"	/* bring in NAX25 definition */
 #endif
 
-#define JNOS_VERSION "2.0j.6r"
+#define JNOS_VERSION "2.0j.7"
 
 char shortversion[] = "JNOS" JNOS_VERSION ;
 

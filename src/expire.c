@@ -64,6 +64,12 @@
 #ifdef UNIX
 #include "unix.h"
 #endif
+
+#define DEFAULT_EXPIRY	/* 26Oct2014, Maiko (VE4KLM), For ALL areas */
+
+#ifdef	DEFAULT_EXPIRY
+#include "dirutil.h"
+#endif
   
 #ifndef __BORLANDC__
 #ifndef UNIX
@@ -200,6 +206,91 @@ void *p;
     if(!Eproc)
         newproc("Expiry", 1536, Expireprocess, 0, NULL, NULL, 0);
 }
+
+#ifdef	DEFAULT_EXPIRY
+
+/*
+ * 26Oct2014, Maiko (VE4KLM), New functions to do default expiry on ALL areas
+ * if a '*' entry is added to the expiry.dat configuration file, requested by
+ * N6MEF (Fox), pretty easy to implement, just requires a few extra functions,
+ * decided to use the 'struct list' used in SMTP, it's convenient to use.
+ */
+
+static struct list *already_expired = NULLLIST; /* list will work for this */
+
+/* Add to the list of processed filenames, needed later for default expiry */
+static void add_processed_expiry (char *fname)
+{
+	addlist (&already_expired, fname, 0, NULLCHAR);
+}
+
+/* Check list of processed filenames, indicate if in the list or not */
+static int processed_expiry (char *fname)
+{
+	struct list *ap;
+
+	for (ap = already_expired; ap != NULLLIST; ap = ap->next)
+		if (!strcmp (ap->val, fname))
+			return 1;
+	return 0;
+}
+
+/* Delete the list when we're done */
+static void delete_processed_list ()
+{
+	register struct list *tp, *tp1;
+
+	for (tp = already_expired; tp != NULLLIST; tp = tp1)
+	{
+		tp1 = tp->next;
+		free (tp->val);
+	/* I don't use 'tp->aux' here, it's just set to NULLCHAR, so don't free */
+		free ((char*)tp);
+	}
+
+	already_expired = NULLLIST;		/* You MUST do this or crash next time */
+}
+
+/* Go through all mailbox files using dirutils */
+static void process_default_expiries (int default_expiry_age)
+{
+	struct ffblk ff;
+
+	char buf[20], fname[32], *extptr;
+
+	// log (-1, "processing default expiry on ALL areas");
+
+    strcpy (buf, "spool/mail/*.txt");
+
+	if (findfirst (buf, &ff, 0) == 0)
+	{
+        do  {
+
+			strcpy (fname, ff.ff_name);
+
+		/* The expire function expects NO extension, so strip it off */
+			extptr = strstr (fname, ".txt");
+			if (extptr)
+			{
+				*extptr = 0;	/* strip off extension */
+
+				// log (-1, "checking [%s]", fname);
+
+				/* make sure this mailbox was not expiry processed already */
+				if (!processed_expiry (fname))
+				{
+					/* log (-1, "expiring [%s] default age %d",
+						fname, default_expiry_age);
+					*/
+
+					expire (fname, default_expiry_age);
+				}
+			}
+
+		} while (findnext (&ff) == 0);
+	}
+}
+#endif
   
 static void
 Expireprocess(a,v1,v2)
@@ -215,6 +306,9 @@ void *v1, *v2;
     FILE *ctl;
 #if defined(FBBFWD) && defined(MBFWD)
     extern int FBBSendingCnt;
+#endif
+#ifdef	DEFAULT_EXPIRY
+	int default_expiry_age = 0;
 #endif
   
     Eproc = 1;
@@ -245,12 +339,38 @@ void *v1, *v2;
         rip(line);
         /* terminate area name */
         age = DEFAULT_AGE;
-        if((cp=strpbrk(line, " \t")) != NULLCHAR) {
+        if((cp=strpbrk(line, " \t")) != NULLCHAR)
+		{
             /* there is age info */
             *cp++ = '\0';
             age = atoi(cp);
+/*
+ * 01Nov2014, Maiko (VE4KLM), By introducing a default expiry, we inadvertently
+ * force expiry on ALL remaining areas, which might not be desireable. There may
+ * be areas we don't want to run expiry processing on. For those areas, you can
+ * add an entry with the age set to -1, and the area will be 'bypassed'.
+ */
+#ifdef	DEFAULT_EXPIRY
+			if (age == -1)
+			{
+				log (-1, "[%s] no expiry processing", line);
+				add_processed_expiry (line);
+				continue;
+			}
+			else
+#endif
             if (age <= 0) age = DEFAULT_AGE;
         }
+
+/* 26Oct2014, Maiko (VE4KLM), N6MEF (Fox) requested 'default expiry' */
+#ifdef	DEFAULT_EXPIRY
+	if (*line == '*')
+	{
+		default_expiry_age = age;
+		continue;
+	}
+#endif
+
 #ifdef NN_EITHER
         if (*line == '!') {  /* Expire NNTP entry if line begins with ! */
 #ifdef NNTPS
@@ -264,9 +384,22 @@ void *v1, *v2;
         }
         else
 #endif
-        expire(line,age);
+		{
+#ifdef	DEFAULT_EXPIRY
+			add_processed_expiry (line);
+#endif
+        	expire(line,age);
+		}
     }
     fclose(ctl);
+
+/* 26Oct2014, Maiko (VE4KLM), N6MEF (Fox) requested 'default expiry' */
+#ifdef	DEFAULT_EXPIRY
+	if (default_expiry_age)
+		process_default_expiries (default_expiry_age);
+	delete_processed_list ();
+#endif
+
 #ifdef NN_EITHER
     if (expire_nntp_history) {
         for (age=30; age>0; age--) {  /* try to lock news History file */

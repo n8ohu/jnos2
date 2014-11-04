@@ -84,7 +84,7 @@ SERVERS= ttylink.o ftpserv.o smisc.o smtpserv.o convers.o \
 	tipmail.o mailutil.o index.o expire.o calldbd.o \
 	buckbook.o pop2serv.o pop3serv.o timed.o b2f.o \
 	qrz.o fbbfwd.o lzhuf.o term.o tcpgate.o http.o \
-	wpages.o merge.o sort.o
+	wpages.o merge.o sort.o ufgets.o
 
 HFDD = hfddrtns.o hfdd.o winmor.o ptcpro.o kam.o hfddinit.o pk232.o hfddq.o
 

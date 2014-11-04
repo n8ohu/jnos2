@@ -1,4 +1,73 @@
 
+ differences between 2.0j.7 and 2.0j.6r - November 2, 2014
+ ---------------------------------------------------------
+
+1) For B2F delivery (fbbfwd.c), put in checks for missing email headers. In
+   some cases, the To: and/or From: were missing, causing JNOS to crash !
+
+2) More work on CCLIST issue (mboxmail.c) from 2.0j.5, one should check both
+   the To: and CCLIST, not just the To: when looking for the presence of any
+   external hosts in outgoing messages.
+
+3) Moved the set_index() call for the TO field, from smtpserv.c to index.c, to
+   fix a problem where users were reporting seeing the wrong TO information if
+   they did a LIST command at their mailbox prompt. The index was 'wrong'.
+
+4) The 'm->line' fixed length input buffer for mailbox is one step closer to
+   being replaced with an unlimited length string input function and pointer
+   combination - idea is to eventually do away with the fixed length buffer.
+
+   Added a new module (ufgets.c), code is courtesy of btmills of GitHub, with
+   some modifications to use it as a replacement for mbxrecvline() in the code
+   where any BBS user issues the 'SC' command (mboxmail.c). Problems have been
+   reported where the CCLIST is truncated and/or bleeds into the Subject line.
+
+   This has to do with the way mbxrecvline() uses MBXLINE - using the ufgets()
+   function instead completely fixes the reported problems, and allows for an
+   'unlimited' number of CC recipients to be specified at the BBS prompt, no
+   matter what the value of MBXLINE is.
+
+5) The IGNORE_RIP_TAG option introduced in 2.0j.3 (search this document) was
+   never added to the default config file (config.h.default). This option is
+   somewhat important and should be more visible to people (default #undef).
+
+6) Revamped the nos log functions, and added Bob's (VE3TOK) mods so that you
+   can now specify a single running nos.log, instead of the daily versions,
+   this is not a compile time option, decided to make it runtime instead,
+   the new 'log' command usage is as follows :
+
+     Usage: log file [ nos.log | daily ] THEN log [ on | off]
+            disk logging is ON, logfile type is DDMMMYY (daily)
+
+7) Regarding the rewrite file and matching of wildcards ?, *, and +. It's been
+   noted only the * and + wildcards are providing the $1, $2, etc values, which
+   one can refer to in the second column of a rule. JNOS has never set $1, $2,
+   and so on for the ? wildcard tag. I have modified the code to now do this.
+
+8) A request was made for a way to run a default expire on ALL mailboxes not
+   listed in the 'expire.dat' configuration file. I have added new code which
+   will allow you to do this. Simply add another line to 'expire.dat', but use
+   the '*' character instead of a filename. That will be the default expire.
+
+   If you decide to run a default expire, there may still be areas you do NOT
+   want expiry done on, so an additional feature was added to deal with this
+   very scenario. Any area for which you do NOT want default expiry done can
+   be added to the 'expire.dat' file, with the age value set to -1.
+
+   This feature actually opens up the possibility of using wildcards to expire
+   files that have specific filename patterns, which would require a few more
+   modifications to be made to the code, so for now that is just a thought.
+
+9) Since early 2010, JNOS has been able to make use of RIP broadcasts from the
+   AMPRnet gateways system, to update the ip routing table - an alternative to
+   using the 'encap.txt' file method. Unfortunately, the code changes I did at
+   the time to get this working, created a mutual exclusion of sorts. One could
+   not do both RIPAMPRGW and regular RIP at the same time, it was either, or.
+
+   This is now 'fixed' - you should now be able to use the usual RIP services
+   provided by JNOS, while being able to handle the AMPRnet RIP broadcasts. Of
+   course, you still have to define RIPAMPRGW, and use 'ip upstairs', etc.
+
  differences between 2.0j.6r and 2.0j.6q - July 21, 2014
  -------------------------------------------------------
 

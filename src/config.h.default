@@ -4,7 +4,7 @@
 /*
  * JNOS 2.0
  *
- * $Id: config.h.default,v 1.4 2012/03/20 17:00:37 ve4klm Exp $
+ * $Id: config.h.default,v 1.4 2012/03/20 17:00:37 ve4klm Exp ve4klm $
  *
  *
  * May 20, 2009 - This file has 2 sections. The first section is for options
@@ -28,6 +28,13 @@
 #undef APRSC		/* define this if all you want is an APRS client */
 
 #define RIPAMPRGW	/* 20Feb2010 - special code for AMPRgw RIP updates */
+
+/*
+ * 04Aug2013 - Gus (I0OJJ) reported getting RIP broadcasts for which the tag
+ * field was NOT being set, which effectively caused JNOS to ignore incoming
+ * RIP information, so one can now #define this option to fix the situation.
+ */
+#undef IGNORE_RIP_TAG
 
 #define TUN		/* Use TUN linux kernel module for networking */
 #define HFDD		/* HFDD (HF Digital Devices) - Pactor Host Mode */

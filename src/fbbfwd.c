@@ -2179,7 +2179,7 @@ static int debugB2F = 0, numafiles = 0;
 
 static int doB2Facceptnote (struct mbx *m, char *infile)
 {
-	int cnt, tofilledin = 0, bodysize = 0, filesize = 0;
+	int cnt, fromfilledin = 0, tofilledin = 0, bodysize = 0, filesize = 0;
 
     char *obuf, *host, fullfrom[MBXLINE], *rhdr = NULLCHAR;
 
@@ -2238,14 +2238,17 @@ static int doB2Facceptnote (struct mbx *m, char *infile)
 				addlist (&cclist, m->line + 4, 0, NULLCHAR);
 			}
 		}
+
 		/* 01Sep2010, Maiko, Oops, Need to set who it is from */
 		if (!strncmp (m->line, "From: ", 6))
 		{
-			char *fptr, *ftemp;
+			if (!fromfilledin)
+			{
+				char *fptr, *ftemp;
 
-			r_from = j2strdup (m->line + 6);
+				r_from = j2strdup (m->line + 6);
 
-			log (-1, "original [%s]", r_from);
+				log (-1, "original [%s]", r_from);
 
 			/*
 			 * 12Nov2013, Maiko (VE4KLM), Use some of Lantz code in wpage.c
@@ -2254,21 +2257,20 @@ static int doB2Facceptnote (struct mbx *m, char *infile)
 			 * the assumption is that (from the very old days), it is simply
 			 * formatted like 'name@company.com' - that doesn't work now :(
 			 */
-			if (*r_from == '"')
-			{
-				r_from++;
-				if ((ftemp = strchr (r_from, '"')) != NULLCHAR)
+				if (*r_from == '"')
+				{
+					r_from++;
+					if ((ftemp = strchr (r_from, '"')) != NULLCHAR)
+						r_from = ftemp+1;
+				}
+				if ((ftemp = strchr (r_from, '<')) != NULLCHAR)
+				{
 					r_from = ftemp+1;
-			}
-			if ((ftemp = strchr (r_from, '<')) != NULLCHAR)
-			{
-				r_from = ftemp+1;
-				if ((ftemp = strchr (r_from, '>')) != NULLCHAR)
-					*ftemp = 0;
-			}
-			if ((ftemp = strpbrk (r_from, " \t")) != NULLCHAR)
-                *ftemp = 0;
-
+					if ((ftemp = strchr (r_from, '>')) != NULLCHAR)
+						*ftemp = 0;
+				}
+				if ((ftemp = strpbrk (r_from, " \t")) != NULLCHAR)
+                	*ftemp = 0;
 			/*
 			 * 27Apr2011, Maiko (VE4KLM), I would like to stay consistent with
 			 * the 'from' info we get from the older style FBB forwarding, so
@@ -2277,14 +2279,17 @@ static int doB2Facceptnote (struct mbx *m, char *infile)
 			 * testing, the final 'From:' field was getting way too crazy !
 			 */
 
-			if ((fptr = strpbrk (r_from, "@")))
-				*fptr = '\0';
+				if ((fptr = strpbrk (r_from, "@")))
+					*fptr = '\0';
 
-			/* 12Nov2013, Maiko, Strip off 'internal' bbs addressing */
-			if ((fptr = strpbrk (r_from, "%")))
-				*fptr = '\0';
+				/* 12Nov2013, Maiko, Strip off 'internal' bbs addressing */
+				if ((fptr = strpbrk (r_from, "%")))
+					*fptr = '\0';
 
-			log (-1, "stripped [%s]", r_from);
+				log (-1, "stripped [%s]", r_from);
+
+				fromfilledin = 1;
+			}
 		}
 
 		if (!strncmp (m->line, "Cc: ", 4))
@@ -2317,6 +2322,23 @@ static int doB2Facceptnote (struct mbx *m, char *infile)
 				numafiles++;
 			}
 		}
+	}
+
+	/*
+	 * 25Jul2014, Maiko, If 'To:' and/or 'From:' have not been found
+	 * then we need to stop, or else JNOS will crash and even then the
+	 * message is malformed, so it should not even go any further.
+	 */
+	if (!tofilledin)
+	{
+		log (m->user, "email header missing To: field");
+		return 0;
+	}
+
+	if (!fromfilledin)
+	{
+		log (m->user, "email header missing From: field");
+		return 0;
 	}
 
 	/*

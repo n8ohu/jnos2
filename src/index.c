@@ -163,7 +163,11 @@ int cont;       /* true if string is a continued header line */
 {
     char *cp, *ap = NULLCHAR;
     int par = 0;
-  
+
+#ifdef IND_DEBUG
+    log (-1, "string [%s] continued %d", string, cont);
+#endif
+
     if((cp = getname(string)) != NULLCHAR) /* Look for <> style address */
         return cp;
   
@@ -195,6 +199,11 @@ int cont;       /* true if string is a continued header line */
         if(ap == NULLCHAR)
             ap = cp;
     }
+
+#ifdef IND_DEBUG
+    log (-1, "ap [%s]", ap);
+#endif
+
     return ap;
 }
   
@@ -312,6 +321,32 @@ void set_index(char *buf,struct mailindex *index, int hdrtype) {
         case TO:
             free(index->to);
             index->to = j2strdup(getaddress(buf,continued));
+/*
+ * 10Aug2014, Maiko (VE4KLM), following code used to be in smtpserv.c, but I've
+ * moved it into here because index rebuild wasn't consistent with the original
+ * processing done when the message came in via smtp server. This showed up in
+ * the CCLIST issues (ie, the LA command) during tests done by N6MEF (Fox), so
+ * hopefully this is it, and the entire thing is fixed once and for all.
+ */
+            if ((cp=strchr(index->to,'@')) != NULLCHAR &&
+					!stricmp(cp+1,Hostname))
+            {
+                *cp='\0'; /* but strip @our_hostname */
+
+#ifdef IND_DEBUG
+                log (-1, "smtpserv strip TO [%s]", index->to);
+#endif
+
+                if ((cp = strrchr(index->to,'%')) != NULLCHAR)
+					*cp = '@';
+
+#ifdef IND_DEBUG
+				log (-1, "smtpserv add @ ? [%s]", index->to);
+#endif
+            }
+/*
+ * 10Aug2014, End of moved code
+ */
             break;
         case STATUS:          /* Jnos-defined */
             if(buf[8] == 'R')
@@ -354,8 +389,13 @@ void set_index(char *buf,struct mailindex *index, int hdrtype) {
 			 *
                 if (*buf) index->subject = j2strdup(buf);
 			 */
+
+#ifdef DONT_COMPILE
+           /* 26Jul2014, Maiko, This warning is now annoying and not useful */
+
 				if (!(*buf))
 					log (-1, "developer warning - malformed subject ???");
+#endif
 
                 index->subject = j2strdup(buf);
             }
@@ -428,7 +468,11 @@ int WriteIndex(int idx, struct mailindex *ind) {
     /* write message size */
     write(idx,&ind->size,(size_t)sizeof(ind->size));
     xlen += sizeof(ind->size);
-  
+ 
+#ifdef IND_DEBUG
+	log (-1, "TO (%d) [%s]", strlen(ind->to), ind->to);
+#endif
+ 
     /* write to-address */
     if(ind->to) {
         write(idx,ind->to,(size_t)strlen(ind->to));

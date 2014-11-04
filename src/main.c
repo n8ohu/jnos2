@@ -1068,14 +1068,46 @@ void *p;
 }
   
 int Uselog = 1;
-  
-int
-dolog(argc,argv,p)
-int argc;
-char *argv[];
-void *p;
+
+static int dailylogfile = 1; /* 21Oct2014, Maiko, default to daily logfiles */
+
+static int logusage ()
 {
-    return setbool(&Uselog,"disk logging",argc,argv);
+	tprintf ("Usage: log file [ nos.log | daily ] THEN log [ on | off]\n");
+	tprintf ("       disk logging is %s, logfile type is %s\n", Uselog ? "ON":"OFF", dailylogfile ? "DDMMMYY (daily)":"nos.log");
+	return 1;
+}
+
+/* 23Oct2014, Maiko (VE4KLM), Rewrote the dolog, and created usage function */
+
+int dolog (int argc, char **argv, void *p)
+{
+	int retval = 0;
+
+	if (argc < 2)
+		retval = logusage ();
+
+	else if (!strcmpi (argv[1], "file"))
+	{
+		if (argc < 3)
+			retval = logusage ();
+
+		else
+		{
+			if (!strcmpi (argv[2], "nos.log"))
+				dailylogfile = 0;
+
+			else if (!strcmpi (argv[2], "daily"))
+ 				dailylogfile = 1;
+
+			else
+				retval = logusage ();
+		}
+	}
+	else if (!isboolcmd (&Uselog, argv[1]))
+		retval = logusage ();
+
+	return retval;	/* the old function returned 1 on any 'failure' */
 }
 
 /*
@@ -1097,12 +1129,29 @@ static FILE *nos_logfile (void)
 #ifdef UNIX
     if (*(cp + 8) == ' ') *(cp + 8) = '0';	/* 04 Feb, not b4 Feb */
 #endif
-    sprintf (ML, "%s/%2.2s%3.3s%2.2s", LogsDir, cp + 8, cp + 4, cp + 22);
+
+	/*
+	 * 21Oct2014, Maiko (VE4KLM), incorporate VE3TOK code, but instead of
+	 * compile time, make it a runtime option, ie : dailylogfile flag.
+	 */
+	if (dailylogfile)
+    	sprintf (ML, "%s/%2.2s%3.3s%2.2s", LogsDir, cp + 8, cp + 4, cp + 22);
+	else
+	{
+    	/* 28Sep2014, Boudewijn(Bob) VE3TOK, changed log name to nos.log */
+    	sprintf (ML, "%s/%s", LogsDir, "nos.log");
+	}
 
 	if ((fp = fopen (ML, APPEND_TEXT)) == NULLFILE)
 		return NULLFILE;
 
-    fprintf (fp, "%9.9s", cp + 11);
+	if (dailylogfile)
+    	fprintf (fp, "%9.9s", cp + 11);
+	else
+	{
+    	/* 30Sep2014, Boudewijn VE3TOK, added Day Month Year to time stamp */
+    	fprintf (fp, "%.24s ", cp);
+	}
 
 	return fp;
 }

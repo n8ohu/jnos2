@@ -356,7 +356,30 @@ void *p;
         return(0);
     }
 }
-  
+
+/* 23Oct2014, Maiko (VE4KLM), new function to just check for boolcmd, so
+ * I can maintain backwards compatibility with older autoexec.nos files. I
+ * need this for a more user friendly usage function that I've written for
+ * the revamped dolog() command in main.c - also this returns 1 (not a 0)
+ * on a successful command match.
+ */
+
+int isboolcmd (int *var, char *cmdstr)
+{ 
+	struct boolcmd *bc;
+
+	for (bc = Boolcmds; bc->str != NULLCHAR; bc++)
+	{
+		if (!strcmpi (cmdstr, bc->str))
+		{
+            	*var = bc->val;
+            	return 1;
+       	}
+   	}
+
+	return 0;
+}
+
 /* Subroutine for setting and displaying boolean flags */
 int
 setbool(var,label,argc,argv)
@@ -371,12 +394,20 @@ char *argv[];
         tprintf("%s: %s\n",label,*var ? "on":"off");
         return 1;
     }
+
+	if (isboolcmd (var, argv[1]))
+		return 0;
+/*
+ * 23Oct2014, Maiko, replaced with above isboolcmd() - cuts duplicate code
+ *
     for(bc = Boolcmds;bc->str != NULLCHAR;bc++){
         if(strcmpi(argv[1],bc->str) == 0){
             *var = bc->val;
             return 0;
         }
     }
+ *
+ */
     j2tputs("Valid options:");
     for(bc = Boolcmds;bc->str != NULLCHAR;bc++)
         if(tprintf(" %s",bc->str) == EOF)

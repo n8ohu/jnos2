@@ -1,5 +1,5 @@
 
-November 4, 2014 - Compile instructions for JNOS 2.0j.7
+July 23, 2014 - Compile instructions for JNOS 2.0j.6r
 
 1) Prerequisites
 
@@ -20,16 +20,16 @@ November 4, 2014 - Compile instructions for JNOS 2.0j.7
 
 2) Extracting the files
 
-   Save the 'jnos2.0j.7.tar.gz' file to any directory you like, then :
+   Save the 'jnos2.0j.6r.tar.gz' file to any directory you like, then :
 
-     gunzip jnos2.0j.7.tar.gz
-     tar xvf jnos2.0j.7.tar
+     gunzip jnos2.0j.6r.tar.gz
+     tar xvf jnos2.0j.6r.tar
      cd src
 
 3) Before you compile and IF you have your own config.h from a previous
    version of JNOS 2.0, then you can copy it over if you like. However, if
    you choose to do this, do a 'diff' between your 'config.h' and the new
-   'config.h.default' shipped with JNOS 2.0j.7 - to see what new features
+   'config.h.default' shipped with JNOS 2.0j.6r - to see what new features
    you might be missing out on. It is probably not a big deal, but you
    should know about it anyways.
 
@@ -84,7 +84,7 @@ November 4, 2014 - Compile instructions for JNOS 2.0j.7
    the time of the crash if you don't mind. Logs are under /jnos/logs/
    directory (by default).
 
-JNOS 2.0j.7 released - 02Nov2014
+JNOS 2.0j.6r released - 22Jul2014
 
 * Maiko Langelaar / VE4KLM
 

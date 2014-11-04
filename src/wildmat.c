@@ -47,10 +47,13 @@ were, I'd use the code I mentioned above.
    argument. Each part of the string that matches '*' is returned as a
    null-terminated, malloced string in this array.
  */
+
 #include <ctype.h>
 #include "global.h"
-  
-  
+
+/* 25Oct2014, Maiko (VE4KLM), Also put '?' values into $1, $2, and so on */
+#define CAPTURE_QUESTION_MARK_VALUES
+
 static int Star __ARGS((char *s,char *p,char **argv,int single));
 static int haveDot __ARGS((register char *c,register int len));
   
@@ -107,6 +110,13 @@ register char **argv;
             /* Match anything. */
                 if(*s == '\0')
                     return FALSE;
+/* 25Oct2014, Maiko (VE4KLM), Also put '?' values into $1, $2, and so on */
+#ifdef CAPTURE_QUESTION_MARK_VALUES
+                *argv = malloc((unsigned)2);
+                strncpy(*argv,s,(size_t)1);
+                *(*argv + 1) = '\0';
+                argv++;
+#endif
                 continue;
             case '*':
             case '+':
